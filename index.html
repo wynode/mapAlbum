@@ -1,0 +1,617 @@
+---
+layout: false
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<title>Map Album</title>
+    <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=iWKEGdsj2orvnolSOfF9d1qQ9EpHiumn"></script>
+    <script src="http://api.map.baidu.com/library/SearchControl/1.4/src/SearchControl.js"></script>
+    <script src="http://api.map.baidu.com/library/RichMarker/1.2/src/RichMarker.js"></script>
+    <link rel="stylesheet" href="http://api.map.baidu.com/library/SearchControl/1.4/src/SearchControl_min.css" />
+    <style>
+        html { height: 100% } body { height: 100%; margin: 0px; padding: 0px; text-align: center; } #container { height: 100% } #searchBox { position: absolute; width: 70%; top: 2%; left: 10%; z-index: 10; }.BMap_cpyCtrl { display: none!important; } #bg-container { left: 0; right: 0; top: 0; bottom: 0; background-color: #000; opacity: 0.5; position: fixed; z-index: 20; visibility: hidden; } #album { position: absolute; z-index: 30; width: 900px; left: 50%; margin-left: -500px; margin-top: 100px; visibility: hidden; } #imageDiv { display: inline-block; width: 600px; height: 600px; position: relative; } #mainImg { min-width: 300px; max-width: 600px; min-height: 330px; max-height: 600px; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); -moz-transform: translate(-50%, -50%); -o-transform: translate(-50%, -50%); transform: translate(-50%, -50%); } #album p { position: absolute; top: -50px; left: 100px; color: #000; } #closeBg { width: 50px; height: 50px; position: absolute; right: 75px; top: -25px; opacity: .7; cursor: pointer; } #closeBg:hover { opacity: 1; } #pre { width: 50px; height: 50px; display: inline-block; position: absolute; top: 275px; left: 50px; opacity: .7; cursor: pointer; } #pre:hover { opacity: 1; } #next { width: 50px; height: 50px; display: inline-block; position: absolute; top: 275px; right: 50px; opacity: .7; cursor: pointer; } #next:hover { opacity: 1; } #viewT { width: 800px; height: 95px; overflow: hidden; margin-left: 50px; margin-top: 20px; } #thumbnail { width: 10000px; height: 95px; padding: 0; text-align: center; margin: 0; clear: both; } #thumbnail li { list-style: none; position: relative; float: left; width: 95px; height: 95px; box-sizing: border-box; margin-right: 5px; } #thumbnail img { min-width: 50px; max-width: 89px; min-height: 50px; max-height: 89px; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); -moz-transform: translate(-50%, -50%); -o-transform: translate(-50%, -50%); transform: translate(-50%, -50%); } #left { width: 25px; height: 50px; position: absolute; left: 0; bottom: 80px; cursor: pointer; } #right { width: 25px; height: 50px; position: absolute; right: 0; bottom: 80px; cursor: pointer; } #addImg { width: 200px; height: 40px; font-size: 15px;line-height: 40px; color: #d5d4d4; background-color:#4a4a4a; cursor: pointer; margin-left: 40%; margin-top: 20px; } #addImg:hover { background-color: #2c2b2b; } #on { border: 3px solid #252524; transform: scale(0.9, 0.9); } .BMap_Marker { display: none; } span[unselectable="on"] { display: none; }
+    </style>
+</head>
+<body>
+    <div id="bg-container">
+                <input type="file" id="file" style="visibility: hidden;" onchange="addRichMarker(curPoint.lng,curPoint.lat)" />
+        <input type="file" id="file1" style="visibility: hidden;" onchange="addImgUrl()" /> 
+    </div>
+    <div id="album">
+        <p></p>
+        <img src="images/closea.png" id="closeBg" onclick="closeAlbum()" alt="">
+        <img src="images/pre.png" id="pre" onclick="clickPre()" alt="">
+        <div id="imageDiv">
+            <img id="mainImg" src="" alt="">
+        </div>
+        <img src="images/next.png" id="next" onclick="clickNext()" alt="">
+        <img src="images/left.png" alt="" id="left" onclick="clickLeft()" style="visibility: hidden;">
+        <div id="viewT">
+            <ul id="thumbnail">
+            </ul>
+        </div>
+        <img src="images/right.png" alt="" id="right" onclick="clickRight()" style="visibility: hidden;">
+        <div id="addImg" onclick="document.getElementById('file1').click();">上传照片 （支持拖拽）</div>
+    </div>
+	<div id="searchBox"></div>
+	<div id="container">  
+    </div>
+</body>
+<script type="text/javascript">
+    //创建和初始化地图函数：
+    function initMap() {
+        createMap();//创建地图
+        setMapEvent();//设置地图事件
+        addMapControl();//向地图添加控件
+
+        jianting();//监听回车
+    }
+    //监听搜索栏右键
+    function jianting(){ 
+        document.getElementById('BMapLib_PoiSearch').onkeydown=keyDownSearch;
+        function keyDownSearch(e) {
+            // 兼容FF和IE和Opera
+            var theEvent = e || window.event;
+            var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+            if (code == 13) {
+               document.getElementById('BMapLib_sc_b0').click();
+                return false;
+            }
+            return true;
+        }
+    }
+    //创建地图函数：
+    function createMap() {
+        var map = new BMap.Map("container",{enableMapClick:false});//在百度地图容器中创建一个地图,关闭poi ,{enableMapClick:false}
+        var point = new BMap.Point(104.072366,30.664789);//定义一个中心点坐标
+        map.centerAndZoom(point, 12);//设定地图的中心点和坐标并将地图显示在地图容器中
+        var geoc = new BMap.Geocoder();    
+        window.map = map;//将map变量存储在全局
+        window.geoc = geoc;
+    }
+    //地图事件设置函数：
+    function setMapEvent() {
+
+        map.enableDragging();//启用地图拖拽事件，默认启用(可不写)
+        map.enableScrollWheelZoom();//启用地图滚轮放大缩小
+        map.enableDoubleClickZoom();//启用鼠标双击放大，默认启用(可不写)
+        map.enableKeyboard();//启用键盘上下左右键移动地图
+    }
+    //地图控件添加函数：
+    function addMapControl() {
+        //向地图中添加缩放控件
+        // var ctrl_nav = new BMap.NavigationControl( {
+        //     anchor : BMAP_ANCHOR_TOP_LEFT,
+        //     type : BMAP_NAVIGATION_CONTROL_LARGE
+        // });
+        // // 创建鱼骨控件
+        // map.addControl(ctrl_nav);
+        // //向地图中添加缩略图控件
+        // var ctrl_ove = new BMap.OverviewMapControl( {
+        //     anchor : BMAP_ANCHOR_BOTTOM_RIGHT,
+        //     isOpen : 1
+        // });
+        // map.addControl(ctrl_ove);
+        // //向地图中添加比例尺控件
+        // var ctrl_sca = new BMap.ScaleControl( {
+        //     anchor : BMAP_ANCHOR_BOTTOM_LEFT
+        // });
+        // map.addControl(ctrl_sca);
+        //向地图中添加地图类型控件
+        var MapType = new BMap.MapTypeControl({
+            anchor : BMAP_ANCHOR_TOP_RIGHT
+        });
+        map.addControl(MapType);
+        //检索类型
+    	var type = "";
+    	type = LOCAL_SEARCH ;   //周边检索
+    	//type = TRANSIT_ROUTE; //公交检索
+    	//type = DRIVING_ROUTE; //驾车检索
+    	//创建检索控件
+    	var searchControl = new BMapLib.SearchControl({
+        	container : "searchBox" //存放检索控件的容器
+        	, map     : map          //检索的关联地图
+        	, type    : type        //检索类型
+    	});
+    }
+    //向地图添加富标记
+    function addRichMarker(curLng,curLat){
+        let tran = curDb.transaction(["albumPoint"],"readwrite");
+        let objectStore = tran.objectStore("albumPoint");
+        let getValue = objectStore.get('count');
+        getValue.onsuccess = function(e){
+            var count = e.target.result.count
+            rFilter = /^(?:image\/bmp|image\/cis\-cod|image\/gif|image\/ief|image\/jpeg|image\/jpeg|image\/jpeg|image\/pipeg|image\/png|image\/svg\+xml|image\/tiff|image\/x\-cmu\-raster|image\/x\-cmx|image\/x\-icon|image\/x\-portable\-anymap|image\/x\-portable\-bitmap|image\/x\-portable\-graymap|image\/x\-portable\-pixmap|image\/x\-rgb|image\/x\-xbitmap|image\/x\-xpixmap|image\/x\-xwindowdump)$/i;
+            var oFile = document.getElementById("file").files[0];
+            if (!rFilter.test(oFile.type)) { alert("需要一张图片哦"); return; }
+            var reader = new FileReader();
+            //将文件以Data URL形式读入页面
+            reader.readAsDataURL(oFile);
+
+            reader.onload=function(e){
+                var imgData = e.target.result;
+                var image = new Image();
+                image.src = imgData;
+                image.onload = function(){
+                    var wOrH="";
+                    var ratio = image.width/image.height;
+                    var intRatio = ratio.toFixed(2);
+                    //如果为横屏照片，则设置图片的高度为50px;为竖屏照片则设置宽度为50px;
+                    
+                    if(intRatio > 1){
+                        wOrH = "height";
+                        wOffset = (50*intRatio+8)/2;
+                        hOffset = 50+16+8;
+                    }else {
+                        wOrH = "width";
+                        wOffset = (50+8)/2;
+                        hOffset = 50/intRatio+16+8;
+                    }
+                    var htm = "<div class='overLay num"+count+"' style='position: absolute;z-index: 100;'>"
+                        +"<img src='images/close.png' class='close' style='position:absolute;top: -5px;right: -5px;width:20px;height:20px;display:none'>"
+                        +"<img class='image1' style='" + wOrH + ": 50px;border:4px solid #fff;box-shadow:1px 1px 1px #666' src='" + imgData + "' />"+"  <div style='position: relative;margin-top:-5px;margin-left:40%'><span style='display: block; width:0; height:0; border-width:16px 6px 0; border-style:solid; border-color:#666 transparent transparent;/*灰 透明 透明 */ position:relative;'><em style=' display:block; width:0; height:0; border-width:15px 5px 0; border-style:solid; border-color:#fff transparent transparent;/*黄 透明 透明 */ position:absolute; top:-16px; left:-5px;'></em></span></div>"
+                               + "</div>";
+
+                    myRichMarker1 = new BMapLib.RichMarker(htm,  new BMap.Point(curLng,curLat),{
+                                                                  "anchor" : new BMap.Size(-wOffset, -hOffset),
+                                                                  "enableDragging" : false});
+                    map.addOverlay(myRichMarker1);
+                    var overLay = document.getElementsByClassName("num"+count)[0];
+                    overLay.addEventListener('mouseover',function(){
+                        this.getElementsByClassName('close')[0].style.display = 'block';
+                    });
+                    overLay.addEventListener('mouseout',function(){
+                        this.getElementsByClassName('close')[0].style.display = 'none';
+                    });
+                    overLay.getElementsByClassName('close')[0].addEventListener('click',delPreDOM(count));
+
+                    var markerPoint = myRichMarker1.getPosition();
+                    overLay.getElementsByClassName('image1')[0].addEventListener('click',function(){
+                        map.panTo(markerPoint);
+                        if(map.getZoom() < 11){
+                         setTimeout(function(){
+                         map.setZoom(12);
+                          }, 1000);  //1秒后放大到12级
+                        }
+                        if(curLat.toFixed(1) == map.getCenter().lat.toFixed(1)){
+                            let tran = curDb.transaction(["albumPoint"],"readwrite");
+                            let objectStore = tran.objectStore("albumPoint");
+                            let getId = objectStore.get(count-1);
+                            getId.onsuccess = function(e){
+                                let reqJsonObj = e.target.result;
+                                geoc.getLocation(markerPoint, function(rs){
+                                    var addComp = rs.addressComponents;
+                                    var album = document.getElementById('album');
+                                    var bg = document.getElementById('bg-container');
+                                    bg.style.visibility = 'visible';
+                                    album.style.visibility = 'visible';
+                                    var text = addComp.province + " " + addComp.city + " " + addComp.district + " " + addComp.street + " " + addComp.streetNumber;
+                                    album.getElementsByTagName('p')[0].innerHTML = text;
+                                    document.getElementById('mainImg').setAttribute("src",reqJsonObj.url0);
+                                    index = reqJsonObj.id;
+                                    var thumbnail = document.getElementById('thumbnail')
+                                    thumbnail.innerHTML = "";
+                                    for (let i = 0; i <= 30; i++) {
+                                        let url = 'url'+i;
+                                        if(reqJsonObj[url]){
+                                            if( i == 0 ){
+
+                                                let li = document.createElement("li");
+                                                li.setAttribute("id","on");
+                                                let newImg = document.createElement("img");
+                                                newImg.setAttribute("src",reqJsonObj[url]);
+                                                newImg.setAttribute("onclick","imgOn(this)");
+                                                li.appendChild(newImg);
+                                                thumbnail.appendChild(li);
+                                            }else {
+                                                let li = document.createElement("li");
+                                                let newImg = document.createElement("img");
+                                                newImg.setAttribute("src",reqJsonObj[url]);
+                                                newImg.setAttribute("onclick","imgOn(this)");
+                                                li.appendChild(newImg);
+                                                thumbnail.appendChild(li);
+                                                if(i > 7){
+                                                    document.getElementById('left').style.visibility = "visible";
+                                                    document.getElementById('right').style.visibility = "visible";
+                                                }
+                                            }
+                                        }else{
+                                            return;
+                                        }
+
+                                    }
+
+                                });    
+
+                            }
+
+                        };
+                    });
+                    var data = {
+                        id:count,
+                        lng:curLng,
+                        lat:curLat,
+                        imgWidth:image.width,
+                        imgHeight:image.height,
+                        url0:imgData,
+                        intRatio:intRatio
+                    };
+                    let tran = curDb.transaction(["albumPoint"],"readwrite");
+                    let objectStore = tran.objectStore("albumPoint");
+                    objectStore.add(data);
+                    var countData = {
+                        id: 'count',
+                        count: ++count,
+                    }
+                    objectStore.put(countData);
+                }
+            }
+        }   
+    }
+    //使用游标查询id对应的数据对象并更新数据
+    function cursorUpdateData(db,storename,id,imgData){
+        //通过游标更新记录
+        var keyRange = keyRange || '';
+        var store = db.transaction(storename,'readwrite').objectStore(storename);
+        var request = store.openCursor();
+        request.onsuccess = function(e){
+            var cursor = e.target.result,
+                value,
+                updateRequest;
+            if(cursor){//必须要检查
+                if(cursor.key == id){
+                    value = cursor.value;
+                    var jsonLength = 0;
+                    for(var item in value){
+                    jsonLength++;
+                    }
+                    var url = 'url' + (jsonLength - 6);
+                    value[url]= imgData;
+                    updateRequest = cursor.update(value);
+                    updateRequest.onerror = function(){
+                        console.log('游标更新失败');
+                    };
+                    updateRequest.onsuccess = function(){
+                        console.log('游标更新成功');
+                    }
+                }else{
+                    cursor.continue();
+                }
+            }
+        };
+    }
+    //添加新的img
+    function addImgUrl(){
+        rFilter = /^(?:image\/bmp|image\/cis\-cod|image\/gif|image\/ief|image\/jpeg|image\/jpeg|image\/jpeg|image\/pipeg|image\/png|image\/svg\+xml|image\/tiff|image\/x\-cmu\-raster|image\/x\-cmx|image\/x\-icon|image\/x\-portable\-anymap|image\/x\-portable\-bitmap|image\/x\-portable\-graymap|image\/x\-portable\-pixmap|image\/x\-rgb|image\/x\-xbitmap|image\/x\-xpixmap|image\/x\-xwindowdump)$/i;
+        var oFile = document.getElementById("file1").files[0];
+        if (!rFilter.test(oFile.type)) { alert("需要一张图片哦"); return; }
+        var reader = new FileReader();
+        //将文件以Data URL形式读入页面
+        reader.readAsDataURL(oFile);
+        reader.onload = function(e){
+            let imgData = e.target.result;
+            let thumbnail = document.getElementById("thumbnail");
+            let li = document.createElement("li");
+            let newImg = document.createElement("img");
+            newImg.setAttribute("src",imgData);
+            newImg.setAttribute("onclick","imgOn(this)");
+            li.appendChild(newImg);
+            thumbnail.appendChild(li);  
+            cursorUpdateData(curDb,"albumPoint",index,imgData)
+            let i = thumbnail.getElementsByTagName("li");
+            if(i.length > 8){
+                document.getElementById('left').style.visibility = "visible";
+                document.getElementById('right').style.visibility = "visible";
+            }
+        }
+    }
+    //删除父节点函数
+    var delPreDOM = function (i){
+        return function(e){
+            var tran = curDb.transaction(["albumPoint"],"readwrite");
+            var objectStore = tran.objectStore("albumPoint");
+            objectStore.delete(i);
+            var child = document.getElementsByClassName('num'+i)[0];
+            child.parentNode.removeChild(child);
+        }
+    }
+    //关闭相册
+    function closeAlbum(){
+        var album = document.getElementById('album');
+        var bg = document.getElementById('bg-container');
+        bg.style.visibility = 'hidden';    
+        album.style.visibility = 'hidden';
+        document.getElementById('left').style.visibility = "hidden";
+        document.getElementById('right').style.visibility = "hidden";
+    }
+    //添加选中
+    function imgOn(e){
+        var lili = document.getElementById('thumbnail').getElementsByTagName('li');
+        for(let i = 0;i < lili.length;i++ ){
+            lili[i].id = "";
+        }
+        var li = e.parentElement
+        li.setAttribute("id","on");
+        document.getElementById('mainImg').setAttribute("src",e.src);
+    }
+    //点击上一张
+    function clickPre(){
+        let on = document.getElementById("on");
+        if(on.parentNode.firstChild == on){
+            return;
+        }else {
+            let ps = on.previousSibling;
+            let lili = on.parentNode.childNodes;
+            for(let i = 0;i < lili.length;i++ ){
+                lili[i].id = "";
+            }
+            ps.id = "on";
+            document.getElementById('mainImg').setAttribute("src",ps.firstChild.src);
+            for(var i = 0; on.parentNode.childNodes[i].id !== "on"; i++);
+            let viewT = on.parentNode.parentNode;
+            if(i*100 - viewT.scrollLeft < 0){
+                viewT.scrollLeft -= 100; 
+            }
+        }
+    }
+    //点击下一张
+    function clickNext(){
+        let on = document.getElementById("on");
+        if(on.parentNode.lastChild == on){
+            return;
+        }else {
+            let ps = on.nextSibling;
+            let lili = on.parentNode.childNodes;
+            for(let i = 0;i < lili.length;i++ ){
+                lili[i].id = "";
+            }
+            ps.id = "on";
+            document.getElementById('mainImg').setAttribute("src",ps.firstChild.src);
+            for(var i = 0; on.parentNode.childNodes[i].id !== "on"; i++);
+            let viewT = on.parentNode.parentNode;
+            if(i*100 - viewT.scrollLeft > 700){
+                viewT.scrollLeft += 100; 
+            }
+
+           
+            
+        }
+    }
+    //点击上一组
+    function clickLeft(){
+        let viewT = document.getElementById('viewT');
+        viewT.scrollLeft -= 200; 
+    }
+    //点击下一组
+    function clickRight(){
+        let viewT = document.getElementById('viewT');
+        viewT.scrollLeft += 200; 
+    }
+    //添加indexedDB中的富标记
+    function addRichMarkerInit(objectStore,count){
+        for (let i = 0; i < count; i++) {
+            var req = objectStore.get(i);
+            req.onerror = function(){
+                console.error('获取indexedDB中数据错误');
+            }
+            req.onsuccess = function(e){
+
+                var reqObj = e.target.result;
+                if(typeof(reqObj) == "undefined"){
+                    return;
+                }
+
+                var wOrH="";
+                var intRatio = reqObj.intRatio;
+                //如果为横屏照片，则设置图片的高度为50px;为竖屏照片则设置宽度为50px;
+                if(intRatio > 1){
+                    wOrH = "height";
+                    wOffset = (50*intRatio+8)/2;
+                    hOffset = 50+16+8;
+                }else {
+                    wOrH = "width";
+                    wOffset = (50+8)/2;
+                    hOffset = 50/intRatio+16+8;
+                }
+                var html = "<div class='overLay num"+reqObj.id+"' style='position: absolute;z-index: 100;'>"
+                    +"<img src='images/close.png' class='close' style='position:absolute;top: -5px;right: -5px;width:20px;height:20px;display:none'>"
+                    +"<img class='image1' style='" + wOrH + ": 50px;border:4px solid #fff;box-shadow:1px 1px 1px #666' src='" + reqObj.url0 + "' />"+"  <div style='position: relative;margin-top:-5px;margin-left:40%'><span style='display: block; width:0; height:0; border-width:16px 6px 0; border-style:solid; border-color:#666 transparent transparent;/*灰 透明 透明 */ position:relative;'><em style=' display:block; width:0; height:0; border-width:15px 5px 0; border-style:solid; border-color:#fff transparent transparent;/*黄 透明 透明 */ position:absolute; top:-16px; left:-5px;'></em></span></div>"
+                           + "</div>";
+
+                myRichMarker1 = new BMapLib.RichMarker(html,  new BMap.Point(reqObj.lng,reqObj.lat),{
+                                                              "anchor" : new BMap.Size(-wOffset, -hOffset),
+                                                              "enableDragging" : false});
+                map.addOverlay(myRichMarker1);
+                var overLay = document.getElementsByClassName("num"+reqObj.id)[0];
+                overLay.addEventListener('mouseover',function(){
+                    this.getElementsByClassName('close')[0].style.display = 'block';
+                });
+                overLay.addEventListener('mouseout',function(){
+                    this.getElementsByClassName('close')[0].style.display = 'none';
+                });
+                overLay.getElementsByClassName('close')[0].addEventListener('click',delPreDOM(i));
+
+
+                var markerPoint = myRichMarker1.getPosition();
+                overLay.getElementsByClassName('image1')[0].addEventListener('click',function(){
+                    map.panTo(markerPoint);
+                    if(map.getZoom() < 11){
+                     setTimeout(function(){
+                     map.setZoom(12);
+                      }, 1000);  //1秒后放大到12级
+                    }
+                    if(reqObj.lat.toFixed(1) == map.getCenter().lat.toFixed(1)){
+                        let tran = curDb.transaction(["albumPoint"],"readwrite");
+                        let objectStore = tran.objectStore("albumPoint");
+                        let getId = objectStore.get(reqObj.id);
+                        getId.onsuccess = function(e){
+                            let reqJsonObj = e.target.result;
+                            geoc.getLocation(markerPoint, function(rs){
+                                var addComp = rs.addressComponents;
+                                var album = document.getElementById('album');
+                                var bg = document.getElementById('bg-container');
+                                bg.style.visibility = 'visible';
+                                album.style.visibility = 'visible';
+                                var text = addComp.province + " " + addComp.city + " " + addComp.district + " " + addComp.street + " " + addComp.streetNumber;
+                                album.getElementsByTagName('p')[0].innerHTML = text;
+                                document.getElementById('mainImg').setAttribute("src",reqJsonObj.url0);
+                                index = reqJsonObj.id;
+                                var thumbnail = document.getElementById('thumbnail')
+                                thumbnail.innerHTML = "";
+                                for (let i = 0; i <= 30; i++) {
+                                    let url = 'url'+i;
+                                    if(reqJsonObj[url]){
+                                        if( i == 0 ){
+                                            let li = document.createElement("li");
+                                            li.setAttribute("id","on");
+                                            let newImg = document.createElement("img");
+                                            newImg.setAttribute("src",reqJsonObj[url]);
+                                            newImg.setAttribute("onclick","imgOn(this)");
+                                            li.appendChild(newImg);
+                                            thumbnail.appendChild(li);
+                                        }else {
+                                            let li = document.createElement("li");
+                                            let newImg = document.createElement("img");
+                                            newImg.setAttribute("src",reqJsonObj[url]);
+                                            newImg.setAttribute("onclick","imgOn(this)");
+                                            li.appendChild(newImg);
+                                            thumbnail.appendChild(li);
+                                            if(i > 7){
+                                                document.getElementById('left').style.visibility = "visible";
+                                                document.getElementById('right').style.visibility = "visible";
+                                            }
+                                        }
+                                    }else{
+                                        return;
+                                    }
+
+                                }
+
+                            });    
+
+                        }       
+                    };
+                });
+            }
+
+        }
+    }
+    //indexedDB初始化
+    function createDB(){
+        //open创建或打开一个数据库,返回request对象
+        var req = indexDB.open("mapAlbum",3);//第二个参数为版本，版本只能打开最新版本
+        //当数据打开失败时调用
+        req.onerror = function(){
+            alert('indexedDB数据库打开失败');
+        }
+        //当数据打开成功时调用
+        req.onsuccess = function(){
+            //在成功后对象的result属性为本次申请的结果
+            console.log('打开数据库成功并执行成功调用函数');
+            curDb = req.result;//curDb为数据库对象，用来操作数据表，维护数据表
+            var tran = curDb.transaction(["albumPoint"],"readwrite");
+            var objectStore = tran.objectStore("albumPoint");
+            var getValue = objectStore.get('count');
+            getValue.onsuccess = function(e){
+                var count = e.target.result.count
+                addRichMarkerInit(objectStore,count);
+            }
+        }
+        //当第一次创建数据库，或数据库升级时调用的事件
+        //在创建或升级时，用来创建或修改数据表
+        //只有在onupgradeneeded事件中，才能创建和维护数据表
+        req.onupgradeneeded = function(){
+            //创建表的结构
+            var db = req.result;
+            var objectStore = db.createObjectStore("albumPoint",{
+                keyPath: 'id'//无法与autoIncrement联合使用，自己设定的id字段的字段名
+               // autoIncrement:"user_id",//指明当前数据id自增长（indexdb）
+
+            });
+            var user = {
+                id: 'count',
+                count: 0
+            };
+            objectStore.add(user);
+        }
+    }
+    //忽略拖拽过程中接触的事件
+    function ignoreDrag(e) {
+      //确保没有其他元素会取得这个事件
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    //取得拖拽的图片
+    function drop(e) {
+      //取消事件传播及默认行为
+      e.stopPropagation();
+      e.preventDefault();
+      
+      //取得拖进来的文件
+      var data = e.dataTransfer;
+      var files = data.files;
+      //将其传给真正的处理文件的函数
+      addDropImgUrl(files);
+    }
+    //添加拖拽图片
+    function addDropImgUrl(files){
+        rFilter = /^(?:image\/bmp|image\/cis\-cod|image\/gif|image\/ief|image\/jpeg|image\/jpeg|image\/jpeg|image\/pipeg|image\/png|image\/svg\+xml|image\/tiff|image\/x\-cmu\-raster|image\/x\-cmx|image\/x\-icon|image\/x\-portable\-anymap|image\/x\-portable\-bitmap|image\/x\-portable\-graymap|image\/x\-portable\-pixmap|image\/x\-rgb|image\/x\-xbitmap|image\/x\-xpixmap|image\/x\-xwindowdump)$/i;
+        var oFile = files[0];
+        if (!rFilter.test(oFile.type)) { alert("需要一张图片哦"); return; }
+        var reader = new FileReader();
+        //将文件以Data URL形式读入页面
+        reader.readAsDataURL(oFile);
+        reader.onload = function(e){
+            let imgData = e.target.result;
+            let thumbnail = document.getElementById("thumbnail");
+            let li = document.createElement("li");
+            let newImg = document.createElement("img");
+            newImg.setAttribute("src",imgData);
+            newImg.setAttribute("onclick","imgOn(this)");
+            li.appendChild(newImg);
+            thumbnail.appendChild(li);  
+            cursorUpdateData(curDb,"albumPoint",index,imgData)
+            let i = thumbnail.getElementsByTagName("li");
+            if(i.length > 8){
+                document.getElementById('left').style.visibility = "visible";
+                document.getElementById('right').style.visibility = "visible";
+            }
+        }
+    }
+
+    //创建和初始化地图
+    initMap();
+    var index = 0;
+    var indexDB = window.indexedDB;
+    var curDb = null;
+    window.onload = createDB();
+    //将当前右键位置信息传入到curPoint数组
+    var curPoint = new Array;
+    map.addEventListener("rightclick", function(e){
+            curPoint.lng = e.point.lng;
+            curPoint.lat = e.point.lat;
+     });
+    //添加右键菜单
+    var menu = new BMap.ContextMenu();
+    var txtMenuItem = [
+        {
+            text:'在这添加一个相册',
+            callback:function(){
+                var input = document.getElementById('file');
+                input.click();
+           }
+        }
+    ];
+    for(let i=0; i < txtMenuItem.length; i++){
+        menu.addItem(new BMap.MenuItem(txtMenuItem[i].text,txtMenuItem[i].callback,100));
+    }
+    map.addContextMenu(menu);
+    dropBox = document.getElementById("album");
+    dropBox.ondragenter = ignoreDrag;
+    dropBox.ondragover = ignoreDrag;
+    dropBox.ondrop = drop;
+</script>
+</html>
